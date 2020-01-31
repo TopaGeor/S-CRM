@@ -9,7 +9,7 @@ namespace S_CRM
     {
         static void Main(string[] args)
         {
-            var filename = "C:\\Users\\KCA10\\source\\repos\\S-CRM\\products.csv";
+            var filename = "products.csv";
             var productdictionary = new Dictionary<string, Product>();
             var descriptionprices = new Dictionary<string, decimal>();
             //Question 1, 2 and 3
@@ -123,6 +123,9 @@ namespace S_CRM
                 customer0.Id, customer1.Id);
 
             //Question 5b)
+            /*
+             * key is the id, value how many
+             */
             var solddictionaries = new Dictionary<string, int>();
             PopulateSoldItems(ref solddictionaries, customer0.Orders.ListProducts);
             PopulateSoldItems(ref solddictionaries, customer1.Orders.ListProducts);
@@ -163,7 +166,8 @@ namespace S_CRM
                 {
                                 e.Message,
                                 $"In line {linenumber} more than one `;` found",
-                                "Exiting system"});
+                                "Exiting system"
+                });
                 return false;
             }
             return true;

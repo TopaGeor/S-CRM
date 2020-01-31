@@ -37,6 +37,5 @@ namespace S_CRM
 
             TotalAmount = d;
         }
-
     }
 }

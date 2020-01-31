@@ -42,7 +42,5 @@ namespace S_CRM
         {
             Price = d;
         }
-
-
     }
 }
