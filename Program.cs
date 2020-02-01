@@ -10,90 +10,84 @@ namespace S_CRM
         static void Main(string[] args)
         {
             var filename = "products.csv";
-            var productdictionary = new Dictionary<string, Product>();
-            var descriptionprices = new Dictionary<string, decimal>();
+            var productdictionary = new Dictionary<string, Product>(); // key is the id of the product, value is the products
+            var descriptionprices = new Dictionary<string, decimal>(); // key is the description of a product, value is the price of it use it for pricing
             //Question 1, 2 and 3
             try
             {
-                var file = File.ReadAllText(filename);
-                var line = "";
                 var linenumber = 1;
-                foreach (var f in file)
+                foreach (var line in File.ReadAllLines(filename))
                 {
-                    if (f == '\n')
+                    /*
+                    * Cheking if we have the only one ; in a line
+                    * Otherwise return
+                    */
+                   if(!CheckLine(line, linenumber))
+                    {
+                        return;
+                    }
+
+                    /*
+                    * Split at `;`, if any of the spliting parties is empty write a message and return 
+                    */
+                    var splitedline = line.Split(';');
+                    if (string.IsNullOrWhiteSpace(splitedline[0]) ||
+                        string.IsNullOrWhiteSpace(splitedline[1]))
+                    {
+                        WriteMessages(new string[]
+                        {
+                            $"The product at line {linenumber}", 
+                            "Has empty id or description", 
+                            "Exiting system"
+                        });
+                        return;
+                    }
+
+                    /*
+                     * Create a new product
+                     */
+                    Product newproduct = new Product()
+                    {
+                        ProductId = splitedline[0],
+                        Description = splitedline[1]
+                    };
+
+                    /*
+                        * Try to add a product in Dictionary according to the key value
+                        * If it fails a set of messages is written and return
+                    */
+                    //Question 3
+                    if (productdictionary.TryAdd(newproduct.ProductId, newproduct))
                     {
                         /*
-                         * Cheking if we have the only one ; in a line
-                         * Otherwise exception
-                         */
-                        if(!CheckLine(line, linenumber))
+                        * When we met a new description generate generate a price for the product and save it
+                        * If it not then find the first key description and assign to the new product
+                        */
+                        //Question 2
+                        if (descriptionprices.ContainsKey(newproduct.Description))
                         {
-                            return;
-                        }
-
-                        /*
-                         * Split on ;
-                         */
-                        var splitedline = line.Split(';');
-                        if (string.IsNullOrWhiteSpace(splitedline[0]) ||
-                            string.IsNullOrWhiteSpace(splitedline[1]))
-                        {
-                            WriteMessages(new string[]
-                                {$"The product at line {linenumber}", "Has empty id or description", "Exiting system"});
-                            return;
-                        }
-
-                        Product newproduct = new Product()
-                        {
-                            ProductId = splitedline[0],
-                            Description = splitedline[1]
-                        };
-
-                        /*
-                         * Try to add a product in Dictionary
-                         * Otherwise exception
-                         * Dictionary has to have unique key values
-                         */
-                        //Question 3
-                        if (productdictionary.TryAdd(newproduct.ProductId, newproduct))
-                        {
-                            /*
-                             * Generate a value for the product according the description
-                             * For the first time
-                             * Otherwise find the price of the description and set it to 
-                             * The product
-                             */
-                            //Question 2
-                            if (descriptionprices.ContainsKey(newproduct.Description))
-                            {
-                                var temp = productdictionary.First(
-                                    s => s.Value.Description.Equals(newproduct.Description));
-                                newproduct.SetPrice(temp.Value.Price);
-                            }
-                            else
-                            {
-                                newproduct.GeneratePrice();
-                                descriptionprices.Add(newproduct.Description, newproduct.Price);
-                            }
+                            var temp = productdictionary.First(
+                                s => s.Value.Description.Equals(newproduct.Description));
+                            newproduct.SetPrice(temp.Value.Price);
                         }
                         else
                         {
-                            WriteMessages(new string[]
-                            {
-                                @$"Faild to add product with id {newproduct.ProductId}",
-                                "Propably a duplicate id", 
-                                "Exiting system"
-                            });
-                            return;
+                            newproduct.GeneratePrice();
+                            descriptionprices.Add(newproduct.Description, newproduct.Price);
                         }
-
-                        line = "";// clears variable so new line can be written
-                        linenumber++;
                     }
                     else
                     {
-                        line += f;
+                        WriteMessages(new string[]
+                        {
+                            @$"Faild to add product with id {newproduct.ProductId}",
+                            "Propably a duplicate id", 
+                            "Exiting system"
+                        });
+                        return;
                     }
+
+                    linenumber++; // keep track of the lines
                 }
             }
             catch (Exception e)
@@ -114,19 +108,17 @@ namespace S_CRM
             {
                 Id = 1
             };
-            CreateOrders(ref customer0, ref customer1, productdictionary);
+            CreateOrder(ref customer0, productdictionary);
+            CreateOrder(ref customer1, productdictionary);
 
             //Question 5a) 
             customer0.Orders.CalculateAmount();
             customer1.Orders.CalculateAmount();
             BestCustomer(customer0.Orders.TotalAmount, customer1.Orders.TotalAmount,
-                customer0.Id, customer1.Id);
+                         customer0.Id, customer1.Id);
 
             //Question 5b)
-            /*
-             * key is the id, value how many
-             */
-            var solddictionaries = new Dictionary<string, int>();
+            var solddictionaries = new Dictionary<string, int>(); // key is the id, value how many
             PopulateSoldItems(ref solddictionaries, customer0.Orders.ListProducts);
             PopulateSoldItems(ref solddictionaries, customer1.Orders.ListProducts);
 
@@ -144,6 +136,13 @@ namespace S_CRM
             }    
         }
 
+        /// <summary>
+        /// Check if a line has only one `;`and returns true if that is the case, otherwise is false
+        /// If we do not have only one `;` then a set of messages will be written at the Console with the function WriteMessages
+        /// </summary>
+        /// <param name="line"> The content of the line </param>
+        /// <param name="linenumber"> The line number at .csv </param>
+        /// <returns></returns>
         static bool CheckLine(string line, int linenumber)
         {
             try
@@ -173,6 +172,10 @@ namespace S_CRM
             return true;
         }
 
+        /// <summary>
+        /// Prints 1 or more strings into the Console
+        /// </summary>
+        /// <param name="output"></param>
         static void WriteMessages(string[] output)
         {
             foreach (var s in output)
@@ -181,41 +184,64 @@ namespace S_CRM
             }
         }
 
-        static void CreateOrders(ref Customer c0, ref Customer c1, Dictionary<string, Product> dic)
+        /// <summary>
+        /// For a customer populate his ProductList with random products
+        /// </summary>
+        /// <param name="c">Pass a Customer with reference </param>
+        /// <param name="dic"> Dictionary with id and products</param>
+        static void CreateOrder(ref Customer c, Dictionary<string, Product> dic)
         {
             var rand = new Random();
             var size = dic.Keys.Count;
             var k = dic.Keys.ElementAt(rand.Next(size));
             for (var i = 0; i < 10; i++)
             {
-                c0.Orders.ListProducts.Add(dic[k]);
-                k = dic.Keys.ElementAt(rand.Next(size));
-                c1.Orders.ListProducts.Add(dic[k]);
+                c.Orders.ListProducts.Add(dic[k]);
                 k = dic.Keys.ElementAt(rand.Next(size));
             }
         }
 
+        /// <summary>
+        /// Compare two customers expensives and print how has spend the most, if they spend the same prints apropiet message
+        /// </summary>
+        /// <param name="amount0">expensives of a customer </param>
+        /// <param name="amount1">expensives of another customer </param>
+        /// <param name="id0">id of a customer </param>
+        /// <param name="id1">id of another customer </param>
         static void BestCustomer(decimal amount0, decimal amount1, int id0, int id1)
         {
             if (amount0 < amount1)
             {
-                Console.WriteLine($"The customer with {id1} "
-                                  + $"is the most valuable customer "
-                                  + $"with total expensives {amount1}");
+                WriteMessages(new string[]
+                {
+                    $"The customer with {id1} ",
+                    "is the most valuable customer ",
+                    $"with total expensives {amount1}"
+                });
             }
             else if (amount0 > amount1)
             {
-                Console.WriteLine($"The customer with id {id0} "
-                                  + $"is the most valuable customer "
-                                  + $"with total expensives {amount0}");
+                WriteMessages(new string[]
+                {
+                    $"The customer with id {id0} ",
+                    "is the most valuable customer ",
+                    $"with total expensives {amount0}"
+                });
             }
             else
             {
-                Console.WriteLine("Both customers are valuable");
+                WriteMessages(new string[]
+                {
+                    "Both customers are valuable"
+                });
             }
-
         }
 
+        /// <summary>
+        /// The dictionary should have how many times a product is sold
+        /// </summary>
+        /// <param name="dic"></param>
+        /// <param name="products"></param>
         static void PopulateSoldItems(ref Dictionary<string, int> dic, List<Product> products)
         {
             foreach (var p in products)
@@ -231,12 +257,19 @@ namespace S_CRM
             }
         }
 
+        /// <summary>
+        /// Accepts a list that was a dictionary and prints it
+        /// </summary>
+        /// <param name="list"></param>
         static void WriteBestProducts(List<KeyValuePair<string, int>> list)
         {
             foreach (var l in list)
             {
-                Console.WriteLine($"The item with id {l.Key} "
-                                  + $"and with amount sold {l.Value}");
+                WriteMessages(new string[]
+                {
+                    $"The item with id {l.Key} ",
+                    $"and with amount sold {l.Value}"
+                });
             }
         }
     }
